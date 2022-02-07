@@ -1,24 +1,37 @@
 ---
-title: "Grafico borrado"
+title: "Grafico borrado por MINSA, reconstruido con datos de 07/02/2022 - Fecha corte 05/02/2022"
 output: html_notebook
 ---
 
 El MINSA borró el gráfico de barras apiladas que mostraba los muertos por COVID según estado de vacunación.
 Puede verse mas al respecto en este hilo https://twitter.com/gjrossir/status/1471474649678684174
 Este script hace las cuentas para recrearlo
-Tambien, ver script de python que obtiene y archiva la data
+
+---> Bajar los archivos con get-data-minsa.bash 
+
+---> Download the files with get-data-minsa.bash
+
+https://github.com/RonaldPeru007/covid-peru22/blob/master/get-data-minsa.bash
+
+The Dataset used in this .Rmd file is from 07/02/2022
+
+The Date 09/02/2021 used in this .Rmd is the start date of the vaccine campaign in Peru
+
+The file 2022-02-07_grafico_borrado_x_MINSA.csv recreates the graph :
+
+https://datawrapper.dwcdn.net/DSWWL/2/
 
 ```{r}
 library(dplyr)
 library(lubridate)
 library(readr)
 library(stringr)
+library(ggplot2)
 ```
 
 ```{r}
-# https://cloud.minsa.gob.pe/s/8EsmTzyiqmaySxk/download
 cdc <- 
-    read_csv("2022_01_16_TB_FALLECIDO_HOSP_VAC.csv") %>% 
+    read_csv("../2022_02_07_TB_FALLECIDO_HOSP_VAC.csv") %>% 
     mutate_at(vars(contains("fecha")), function(x){ as.Date(x, format="%d/%m/%Y") }) %>% 
     mutate(semana_muerte = paste0(year(fecha_fallecimiento), "|", str_pad(week(fecha_fallecimiento), 2, pad="0")))
 x <- cdc
@@ -56,13 +69,20 @@ resumen <-
 
 
 Primera version para grafico de barras horizontal, no se vio tan bien
+
 ```{r}
 hoy <- Sys.Date()
-resumen %>% write_csv(paste0(hoy, "test.csv"))
+resumen %>% write_csv(paste0(hoy, "_", "muertos_vac_x_semana.csv"))
 ```
 
 
 Segunda version con barras verticales, como el original
+
+Creates the "2022-02-07_grafico_borrado_x_MINSA.csv" which recreates the daily chart MINSA doesn't publish anymore since 24-12-2021...
+
+https://datawrapper.dwcdn.net/DSWWL/2/
+
+
 ```{r}
 transposed <- 
     select(resumen, -no_vac, -una_vac, -dos_vac, -tres_vac, -total_muertos_semana) %>% 
@@ -78,13 +98,17 @@ transposed %>%
     filter(estado_vacunacion != "semana_muerte") %>%
     # rename(estado_vacunacion = semana_muerte) %>% 
     select(estado_vacunacion, everything()) %>%
-    write_csv(paste0(hoy, "test2.csv"))
+    write_csv(paste0(hoy, "_", "grafico_borrado_x_MINSA.csv"))
 ```
 
 
 
 Grafico exploratorio de criterios de fallecimiento, a primera vista no veo una diferencia en la prevalencia de criterios. Tal vez se viera por grupos de edad (como vi en niños). Hay que desarrollarlo mas
-```{r, eval=F, include=F}
+
+
+```{r}
+# , eval=F, include=F
+
 x %>%
     filter(year(fecha_fallecimiento) >= 2021) %>% 
     count(flag_vacuna, criterio_fallecido,sort=T) %>% 
