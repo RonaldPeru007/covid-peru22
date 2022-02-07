@@ -1,5 +1,5 @@
 ---
-title: "SINADEF"
+title: "SINADEF 2.0"
 output: html_notebook
 ---
 
@@ -11,13 +11,17 @@ library(lubridate)
 library(stringr)
 ```
 
+---> Bajar los archivos con get-data-minsa.bash 
+---> Download the files with get-data-minsa.bash
 
-Bajar datos y descomprimir de:
+https://github.com/RonaldPeru007/covid-peru22/blob/master/get-data-minsa.bash
 
-https://www.datosabiertos.gob.pe/dataset/sinadef-certificado-defunciones
+The Dataset used in this file is from 07/02/2022
+
+The Date 09/02/2021 used in this Rmd is the start date of the vaccine campaign in Peru
 
 ```{r}
-x <- read_csv("TB_SINADEF_2021_12_23/TB_SINADEF.csv", col_types = cols(.default = col_character())) %>% 
+x <- read_csv("2022_02_07_TB_SINADEF.csv", col_types = cols(.default = col_character())) %>% 
     mutate(
         FECHA = as.Date(FECHA, format="%d/%m/%Y"),
         EDAD=as.integer(EDAD)
@@ -37,38 +41,33 @@ count(x, `AÑO`) %>%
     theme(
         plot.title = element_text(size=22),
         axis.title = element_text(size=16),
-        axis.ticks = element_text(size=14)
+        axis.ticks = element_line(size=14)
     )
 ```
 
-
-
-
 ## Parte 2: enfocando solo muertes por COVID
 
+[Fuente de datos de solo muertos por COVID] se obtiene con get-data-minsa.bash
 
+[Reporte del Grupo de Trabajo donde detallan los criterios] 
 
-[Fuente de datos de solo muertos por COVID](https://www.datosabiertos.gob.pe/dataset/fallecidos-por-covid-19-ministerio-de-salud-minsa)
-
-[Enlace directo](https://cloud.minsa.gob.pe/s/xJ2LQ3QyRW38Pe5/download)     
-[Archivado](https://web.archive.org/web/20220101005747/https://cloud.minsa.gob.pe/s/xJ2LQ3QyRW38Pe5/download)
-
-[Reporte del Grupo de Trabajo donde detallan los criterios](https://cdn.www.gob.pe/uploads/document/file/1920747/Criterios%20t%C3%A9cnicos.pdf)
+https://cdn.www.gob.pe/uploads/document/file/1920747/Criterios%20t%C3%A9cnicos.pdf
 
 Criterios para clasificar, en orden descendiente de "certeza diagnostica"
 virologico                                  [PCR, antigena]
 serologico
-radiologica:                                radiografia, tomografia, resonancia magnetica compatible con neumonia COVIN
-nexo epidemiologico:                        nexo demostrado con caso probable de Covin
+radiologica:                                radiografia, tomografia, resonancia magnetica compatible con neumonia COVID
+nexo epidemiologico:                        nexo demostrado con caso probable de Covid
 investigacion epidemiologica                Verificado por RENACE (Red Nacional de Epidemiologia)
 SINADEF
+
     si tienen en campos A, B, C, D 
     CIE-10: U071, U072, B342, B972, o la mención de los términos “coronavirus”, “cov-2”, “cov2”, “covid” y “sars”.
 
 
 ```{r}
 FECHA_COMIENZO_VACUNACION <- as.Date("09/02/2021", "%d/%m/%Y")
-x <- read_delim("2021_12_31_fallecidos_covid.csv", delim = ";") %>% 
+x <- read_delim("2022_02_07_fallecidos_covid.csv", delim = ";") %>% 
         mutate(
             FECHA_FALLECIMIENTO = as.Date(as.character(FECHA_FALLECIMIENTO), "%Y%m%d"),
             ano = year(FECHA_FALLECIMIENTO),
@@ -97,9 +96,11 @@ list(
     "Corte anual"=list(
         "Total de muertos 2020" = filter(cuentas_x_ano, ano == 2020)$n ,
         "Total de muertos 2021" = filter(cuentas_x_ano, ano == 2021)$n ,
+        "Total de muertos 2022" = filter(cuentas_x_ano, ano == 2022)$n ,
         "Tasa diaria de muertos 2020" = filter(cuentas_x_ano, ano == 2020)$n / dias_2020,
         "Tasa diaria de muertos 2021" = filter(cuentas_x_ano, ano==2021)$n / 365,
-        "Ratio de tasas (2021/2020)"=298.087/309.73 
+        "Tasa diaria de muertos 2022" = filter(cuentas_x_ano, ano==2022)$n / 37, #Has to be divided by the n° of days since day 1 2022 till  FECHA_CORTE ?
+        "Ratio de tasas (2021/2020) "=297.9699/309.967 # Real numbers from yesterday. Should be static but they climb ???
     ),
     
     "Corte por inicio de vacunacion"=list(
@@ -107,32 +108,35 @@ list(
         "Muertos luego de inicio de vacunacion" = filter(cuentas_corte_vacunacion, muerto_despues_de_inicio_vacunacion)$n ,
         "Tasa diaria de muertos antes del corte" = filter(cuentas_corte_vacunacion, !muerto_despues_de_inicio_vacunacion)$n / dias_hasta_vacunacion,
         "Tasa diaria de muertos luego de corte" = filter(cuentas_corte_vacunacion, muerto_despues_de_inicio_vacunacion)$n / dias_desde_vacunacion,
-        "Ratio de tasas (luego/antes)" = 283.1692/322.516 
+        "Ratio de tasas (luego/antes) " = 295.2492/322.7114 # Real numbers from yesterday. Should be static but they climb ???
 
     )
 )
 ```
 
 ```{r}
-  # Reduccion del 13% en tasa de muertes diarias
-    # Reduccion del 4% en tasa de uertes diarias
+  # Reduccion del 13% en tasa de muertes diarias ?
+  # Reduccion del 4% en tasa de uertes diarias ??
 ```
-
-
-https://cloud.minsa.gob.pe/s/To2QtqoNjKqobfw/download 
-https://www.datosabiertos.gob.pe/dataset/vacunaci%C3%B3n-contra-covid-19-ministerio-de-salud-minsa
+Next chunk takes a while to calculate, and needs a lot of memory ! 16 GB or better preferred
 
 Archivos son demasiado pesados, mejor trabajar con solo el resumen
+
+Split up in two parts from original
+
 ```{r}
-if (FALSE){
-    vacunas <- read_csv("vacunas_covid.csv")  
+    vacunas <- read_csv("2022_02_07_vacunas_covid.csv")  
     vacunas %>%
         mutate(fecha_vacunacion = as.Date(as.character(FECHA_VACUNACION), format = "%Y%m%d")) %>% 
         group_by(fecha_vacunacion, DOSIS) %>% 
         summarise(cuenta = n()) %>% 
         ungroup() %>% 
         write_csv( paste0(Sys.Date(), "_", "vacunacion_por_dosis_por_dia.csv"))    
-} else{
+```
+
+Part 2
+
+```{r}
     vacunas_x_dosis_x_dia <- read_csv( paste0(Sys.Date(), "_", "vacunacion_por_dosis_por_dia.csv"))
     acumulado_dos_dosis <- 
         vacunas_x_dosis_x_dia %>% 
@@ -141,15 +145,12 @@ if (FALSE){
         mutate(
             acumulado = cumsum(cuenta),
             acumulado_cientos_de_miles = acumulado / 100000
-        )
-}
-
+            )
 ```
 
 
-
 ```{r}
-scaleFactor <- 847 / max(acumulado_dos_dosis$acumulado)
+scaleFactor <- 847 / max(acumulado_dos_dosis$acumulado) # De donde viene 847 ?
 
 
 x %>% 
@@ -166,7 +167,7 @@ x %>%
     labs(
         x = "Fecha",
         title = "Muertos diarios por Covid y vacunación acumulada (2 dosis)",
-        subtitle = "Muertos: según SINADEF\nLinea guinda es inicio de vacunación 09/02/2021"
+        subtitle = "Muertos: según SINADEF\nLinea roja vertical en el medio es inicio de vacunación 09/02/2021"
     ) + 
   theme_minimal() + 
   theme(
@@ -175,13 +176,17 @@ x %>%
     axis.title.y.right=element_text(color="red"),
     axis.text.y.right=element_text(color="red")
   ) 
+
 ```
+
+Interesesting File to analyze further ! Deaths by Covid & Vaccination status :
+
+```{r}
+write_csv(x, paste0(Sys.Date(), "_", "muertos_vac_con_covid.csv"))
+```
+
 Se han pasado las cuentas aqui
 https://docs.google.com/spreadsheets/d/1OdQdrop1AiYwy9XWBVK8hZeBko3N8VuTpJNomExo5oE/edit#gid=0
-
-
-
-
 
 
 ## Parte 3: por edades
@@ -195,7 +200,6 @@ muertos <- nrow(x)
     mutate(p  = round(n/muertos* 100,4))
 )
 ```
-
 
 Grupos de riesgo segun el MINSA
 https://www.datosabiertos.gob.pe/dataset/tabla-de-grupo-de-riesgo
@@ -226,9 +230,8 @@ x <- x %>%
 
 ```
 
-
-
 Cifras finales por grupos
+
 ```{r}
 x %>% 
     count(grupo,sort=T) %>% 
@@ -237,7 +240,8 @@ x %>%
 ```
 
 
-Cifras de criterios de definicion de muertes en los grupos jovenes
+Cifras de criterios de definicion de muertes en los grupos jovenes "0-4", "5-12", "13-17"
+
 ```{r}
 filter(x, grupo %in% c("0-4", "5-12", "13-17")  ) %>%
     count(CLASIFICACION_DEF,sort=T) %>%
@@ -249,7 +253,6 @@ filter(x, grupo %in% c("0-4", "5-12", "13-17")  ) %>%
     rename(`Definición muerte por Covid` = CLASIFICACION_DEF, `Total de muertos`=n,  `Porcentaje del total` = p)
     
 ```
-
 
 
 ### Analisis TODO: ver como evolucionan los criterios de evaluacion
