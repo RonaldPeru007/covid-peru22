@@ -1,5 +1,5 @@
 ---
-title: "R Notebook"
+title: "Análisis Niños y otros grupos de edad"
 output: html_notebook
 ---
 
@@ -10,18 +10,26 @@ library(ggplot2)
 library(lubridate)
 library(stringr)
 library(tidyr)
+library(kableExtra)
 ```
 
+---> Bajar los archivos con get-data-minsa.bash 
+
+---> Download the files with get-data-minsa.bash
+
+https://github.com/RonaldPeru007/covid-peru22/blob/master/get-data-minsa.bash
+
+The Dataset used in this .Rmd file is from 07/02/2022
+
+The Date 09/02/2021 used in this .Rmd is the start date of the vaccine campaign in Peru
+
+Chart created by 2022-02-07_resumen_sinadef_x_edad_focus.csv visualized at :
+
+https://datawrapper.dwcdn.net/AErIY/1/
 
 ```{r}
-# No tiene ID persona
-# https://www.datosabiertos.gob.pe/dataset/informaci%C3%B3n-de-fallecidos-del-sistema-nacional-de-defunciones-ministerio-de-salud/resource
-# https://cloud.minsa.gob.pe/s/nqF2irNbFomCLaa/download
 
-# Si tiene ID persona
-# https://www.datosabiertos.gob.pe/dataset/sinadef-certificado-defunciones
-# https://cloud.minsa.gob.pe/s/g9KdDRtek42X3pg/download
-sinadef_completo <- read_csv("2022_01_28_TB_SINADEF/TB_SINADEF.csv", col_types = cols(.default = col_character())) %>% 
+sinadef_completo <- read_csv("2022_02_07_TB_SINADEF.csv", col_types = cols(.default = col_character())) %>% 
     mutate(
         FECHA = as.Date(FECHA, "%m/%d/%Y"),
         ID_PERSONA=as.numeric(ID_PERSONA),
@@ -45,10 +53,8 @@ sinadef_completo <- read_csv("2022_01_28_TB_SINADEF/TB_SINADEF.csv", col_types =
     )
 
 
-# https://www.datosabiertos.gob.pe/dataset/fallecidos-por-covid-19-ministerio-de-salud-minsa/resource/4b7636f3-5f0c-4404-8526
-# https://cloud.minsa.gob.pe/s/xJ2LQ3QyRW38Pe5/download
-sinadef_solo_covid <- read_delim("2022_01_17_fallecidos_sinadef.csv", delim = ";") %>% 
-        mutate(
+sinadef_solo_covid <- read_delim("2022_02_07_fallecidos_covid.csv", delim = ";") %>% 
+ mutate(
             FECHA_FALLECIMIENTO = as.Date(as.character(FECHA_FALLECIMIENTO), "%Y%m%d"),
             ano = year(FECHA_FALLECIMIENTO),
             grupo = case_when(
@@ -62,21 +68,21 @@ sinadef_solo_covid <- read_delim("2022_01_17_fallecidos_sinadef.csv", delim = ";
                 between(EDAD_DECLARADA, 1, 4) ~ "1-4",
                 EDAD_DECLARADA == 0 ~ "0"
             )
-
         )
 ```
 
 Grupos de riesgo segun el MINSA
 https://www.datosabiertos.gob.pe/dataset/tabla-de-grupo-de-riesgo
-5 - 12
-Personas de 12  a 17 años
-Personas de 18  a 19 años
-Personas de 20  a 29 años
+
+Bebes / recien nacidos 0
+Personas de  1 a  4
+Personas de  5 a 12
+Personas de 13 a 17 años
+Personas de 18 a 29 años
 Personas de 30 a 39 años
 Personas de 40 a 49 años
 Personas de 50 a 59 años
-60 años a más
-60 años a más, Adulto Mayor
+Personas de 60 años a más
 
 
 ## Analisis del Sinadef por grupos etarios
@@ -85,7 +91,7 @@ Personas de 50 a 59 años
 ```{r}
 (muertes_x_covid_x_edad <- 
     sinadef_solo_covid %>% 
-    filter(EDAD_DECLARADA <= 17, ano <=2021, !is.na(grupo)) %>%
+    filter(EDAD_DECLARADA <= 117, ano <=2022, !is.na(grupo)) %>%
     count(grupo,ano,sort=T) %>% 
     spread(ano, n) %>% 
     rowwise() %>% 
@@ -96,14 +102,25 @@ Personas de 50 a 59 años
         `Grupo por edad` = grupo,
         `Muertes por Covid 2020` = `2020`,
         `Muertes por Covid 2021` = `2021`,
+        `Muertes por Covid 2022` = `2022`,
     )
 )
 ```
 
+Chunk 3 & 4 give warnings :
+
+Warning: Problem with `mutate()` column `ordenador`.
+i `ordenador = as.integer(unlist(str_split(grupo, "-"))[1])`.
+i NAs introduced by coercion
+i The warning occurred in row 9
+
+To be fixed
+
+
 ```{r}
 (resumen <- 
     sinadef_completo %>% 
-    filter( `AÑO` < 2022, grupo != 'no-determinable') %>% 
+    filter( `AÑO` < 2023, grupo != 'no-determinable') %>% 
     # filter(grupo %in% c("0", "5-12", "1-4", "13-17")) %>% 
     count(grupo, `AÑO`) %>% 
     arrange(grupo, `AÑO`) %>% 
@@ -117,18 +134,19 @@ Personas de 50 a 59 años
 ```
 
 ```{r}
-write_csv(resumen, "resumen_sinadef_x_edad.csv")
+write_csv(resumen, (paste0(Sys.Date(), "_", "resumen_sinadef_x_edad.csv")))
 ```
 
 ```{r}
 focus <- 
     resumen %>%
-    head(4) %>%
+    head(9) %>%
     rename(
         `Muertes SINADEF 2018` = `2018`,
         `Muertes SINADEF 2019` = `2019`,
         `Muertes SINADEF 2020` = `2020`,
         `Muertes SINADEF 2021` = `2021`,
+        `Muertes SINADEF 2022` = `2022`,
     )
 
 bind_cols(
@@ -138,16 +156,19 @@ bind_cols(
     rename(
         `Grupo por edad` = `Grupo por edad en años`
     ) %>% 
-    write_csv("resumen_sinadef_x_edad_focus.csv")
+    write_csv(paste0(Sys.Date(), "_", "resumen_sinadef_x_edad_focus.csv"))
 ```
 
+Chart created by 2022-02-07_resumen_sinadef_x_edad_focus.csv visualized at :
+
+https://datawrapper.dwcdn.net/AErIY/1/
 
 
-Haciendo zoom en el grupo 5-12 que quieren promover ahora
+Haciendo zoom en el grupo 5-12 que quieren promover ahora :
 
 ```{r}
 sinadef_completo %>% 
-    filter( `AÑO` < 2022, grupo=="5-12") %>% 
+    filter( `AÑO` < 2023, grupo=="5-12") %>% 
     # filter(grupo %in% c("0", "5-12", "1-4", "13-17")) %>% 
     count(EDAD, `AÑO`) %>% 
     arrange(EDAD, `AÑO`) %>% 
@@ -156,13 +177,13 @@ sinadef_completo %>%
 ```
 
 
-
-
 Decido no descartar muertes violentas, aunque los numeros son bien parecidos
+
+
 ```{r}
 sinadef_completo %>% 
     filter(
-        `AÑO` < 2022,
+        `AÑO` < 2023,
         grupo != 'no-determinable',
         is.na(`MUERTE VIOLENTA`) | !`MUERTE VIOLENTA` %in% c("OTRO ACCIDENTE", "ACCIDENTE DE TRANSITO", "SUICIDIO", "HOMICIDIO")
     ) %>% 
@@ -196,30 +217,22 @@ sinadef_solo_covid %>%
 ```
 
 ```{r}
-(179 + 162)/509
+(177 + 174)/544
 ```
 
-66.9%
-
-
-
-
-
-
+64.5%
 
 # Otros analisis no publicados
 
 
+Analizando solo data del 2020 y 2021 - y 2022 añadido hasta la fecha
 
-
-
-Analizando solo data del 2020 y 2021
 ```{r}
-sinadef_solo_covid <- filter(sinadef_solo_covid, ano <= 2021)
+sinadef_solo_covid <- filter(sinadef_solo_covid, ano <= 2022)
 sinadef <- sinadef_completo %>% 
     filter(
-        (!is.na(FECHA) & FECHA  >= min(sinadef_solo_covid$FECHA_FALLECIMIENTO) & year(FECHA) %in% c(2020, 2021)) |
-            (is.na(FECHA) & (  (`AÑO` == 2020 & MES >= 3) | `AÑO` == 2021 ) )
+        (!is.na(FECHA) & FECHA  >= min(sinadef_solo_covid$FECHA_FALLECIMIENTO) & year(FECHA) %in% c(2020, 2021, 2022)) |
+            (is.na(FECHA) & (  (`AÑO` == 2020 & MES >= 3) | `AÑO` == 2021 | `AÑO` == 2022 ) )
         ) # periodo solo de pandemia
 ```
 
@@ -257,7 +270,7 @@ count(sinadef, grupo, name="todas_las_muertes") %>%
 
 ```{r}
 sinadef_completo %>% 
-    filter( `AÑO` < 2022) %>% 
+    filter( `AÑO` < 2023) %>% 
     # filter(grupo %in% c("0", "5-12", "1-4", "13-17")) %>% 
     count(grupo, `AÑO`, sort = T) %>% 
     arrange(`AÑO`) %>% 
@@ -267,21 +280,16 @@ sinadef_completo %>%
     ) %>% 
     ggplot() + 
     geom_col(aes(x=`AÑO`, y=aumento_porcentual)) + 
-    facet_grid(grupo~.)
+    facet_grid(grupo~.) # Warning: Removed 10 rows containing missing values (position_stack).
 ```
 
 ```{r}
 sinadef_completo %>% 
-    filter( `AÑO` < 2022, grupo != 'no-determinable') %>% 
+    filter( `AÑO` < 2023, grupo != 'no-determinable') %>% 
     # filter(grupo %in% c("0", "5-12", "1-4", "13-17")) %>% 
     count(grupo, `AÑO`, sort = T) %>% 
     arrange(grupo, `AÑO`)
 ```
-
-
-
-
-0	2019	4758	
 
 
 ```{r}
@@ -312,6 +320,8 @@ sinadef_completo %>%
 
 14851 muertos por Covid que no tienen ID en el Sinadef, no puedo contratastarlos... 
 Deberia dejarlos fuera del analisis?
+
+
 ```{r}
 sinadef_solo_covid %>% anti_join(sinadef, by = c("id_persona" = "ID_PERSONA")) %>% count(grupo,sort=T) %>% mutate(sum(n))
 sinadef_solo_covid %>% anti_join(sinadef, by = c("id_persona" = "ID_PERSONA")) %>% inner_join(sinadef_completo, by = c("id_persona" = "ID_PERSONA"))
@@ -353,8 +363,9 @@ sinadef %>%
 ```
 
 
-
 Cifras finales por grupos
+
+
 ```{r}
 sinadef_solo_covid %>% 
     count(grupo,sort=T) %>% 
@@ -363,7 +374,9 @@ sinadef_solo_covid %>%
 ```
 
 
-Cifras de criterios de definicion de muertes en los grupos jovenes
+Cifras de criterios de definicion de muertes en los grupos jovenes, de 0 - 17 años
+
+
 ```{r}
 sinadef_solo_covid %>% 
     filter(grupo %in% c("0-4", "5-12", "13-17")  ) %>%
