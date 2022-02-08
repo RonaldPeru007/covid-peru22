@@ -1,110 +1,47 @@
-# Covin Perú
+# COVID-22 Perú
 
-Análisis y gráficos sobre el Covin en Perú
-Pueden encontrar la publicación y discusiones en mi [Twitter](https://twitter.com/gjrossir)
+Esta es una 'forked branch' de [@grossir](https://github.com/grossir/covid-peru) que usé como punto de comienzo para actualizar el código y también creé un script bash que descarga todos los archivos de datos de diferentes fuentes desde los [Datos Abiertos Gobierno de Perú](https://datosabiertos.gob.pe/). El script get-data-minsa.bash es fácil de usar y produce un set de datos con las fechas en los nombres de los archivos. También tiene una opción para comprimir todos los archivos para almacenarlos y analizarlos en el futuro cuando le interese analizar un set de datos específico publicado en una fecha concreta.
 
-## Productos
+De momento el codigo es un mix de Español y Ingles. Nuestro objetivo es hacerlo bilingual.
 
-[Gráfico borrado por el Minsa: Visualización de fallecidos por Covin según estado de vacunación](https://datawrapper.dwcdn.net/naPx1/)
+Análisis y gráficos sobre el COVID en Perú pueden encontrar la publicación y discusiones en el Twitter del programador inicial : [Twitter](https://twitter.com/gjrossir)
 
+## English
 
-## Datos
+This is a forked branch from [@grossir](https://github.com/grossir/covid-peru) which I used as a starting point to update the code and I also built a bash script which downloads all data archives from different sources from the [Datos Abiertos Gobierno de Peru](https://datosabiertos.gob.pe/). The get-data-minsa.bash script is easy to use and produces a data set with the dates in the filenames. It also has an option to compress all archives for storage and future analysis when you are interested in a specific dataset published on a specific date.
 
-### Sinadef
+Currently it's a mix of English & Spanish. Our goal is to make it duolingual. 
 
+## Code Languanges
 
-Muertos por todas las causas
+The .Rmd files are developed in [R version 4.1.2](https://www.r-project.org/) with [RStudio Desktop version 2021.09.2 Build 382](https://www.rstudio.com/products/rstudio/) 
 
-**Sin ID_PERSONA**
+## Productos / Products :
 
-[Home](https://www.datosabiertos.gob.pe/dataset/informaci%C3%B3n-de-fallecidos-del-sistema-nacional-de-defunciones-ministerio-de-salud/resource)
-[Datos](https://cloud.minsa.gob.pe/s/nqF2irNbFomCLaa/download)
+[Gráfico borrado por el Minsa: Visualización de fallecidos por Covid según estado de vacunación](https://datawrapper.dwcdn.net/DSWWL/2/)
 
+[Graph deleted by the Ministry of Health Peru : Visualization of proportional Deaths by Covid according to vaccine status, grouped per week](https://datawrapper.dwcdn.net/DSWWL/2/)
 
-**Con ID_PERSONA**
+![](https://github.com/RonaldPeru007/covid-peru22/blob/master/Examples/proporcion-de-fallecidos-con-sin-vacunas-desde-09-02-2021-actualizado-05-02-2022-.png)
 
-[Home](https://www.datosabiertos.gob.pe/dataset/sinadef-certificado-defunciones)
+[Muertes toda causa / Muertes por COVID-19 segun grupo de edad por año](https://datawrapper.dwcdn.net/AErIY/1/)
 
+[Graph with all deaths / year vs COVID deaths / year by group of age](https://datawrapper.dwcdn.net/AErIY/1/)
 
+![](https://github.com/RonaldPeru007/covid-peru22/blob/master/Examples/muertes-toda-causa-muertes-por-covid-19-segun-grupo-de-edad-por-a-o-actualizado-05-02-2022.png)
 
-----------------
+En breve publicamos mas graficos
 
-### Sinadef (solo muertos por Covid)
+Shortly we will publish more graphs
 
-Muertos por Covid, con todos los campos del registro Sinadef
+# Datos - The Data Set used
 
-[Home](https://www.datosabiertos.gob.pe/dataset/fallecidos-por-covid-19-ministerio-de-salud-minsa/resource/4b7636f3-5f0c-4404-8526)
-[Datos](https://cloud.minsa.gob.pe/s/xJ2LQ3QyRW38Pe5/download)
+El script bash descarga todos los archivos de datos (.csv) utilizados por los ficheros fuente de este repositorio. Y también hace algunas modificaciones en los archivos. Observa los comentarios en el script.
 
+The bash script downloads all the data archives (.csv) used by the source files in this repository. And also makes some changes to the files. See the comments in the script.
 
-----------------
+# Colaboración - Collaboration 
 
-### Fallecidos, hospitalizados, vacunados (CDC)
+Les invitamos a colaborar con nosotros y analizar los datos para (re)construir los gráficos que nos dicen la verdad sobre lo que está sucediendo en el Perú. 
 
-Todos en esta archivo fallecieron.
-
-Es el archivo fuente del gráfico borrado por el Minsa
-
-Sin embargo, contiene menos muertos que la cuenta general en SINADEF (alrededor de 100k / 200k)
-
-Los muertos del último periodo (mitad del 2022 en adelante) si están completos, comparable con el SINADEF (me di cuenta al hacer el estudio del engaño de Cevallos). Esto le da aún más fuerza al gráfico
-
-[Home](https://www.datosabiertos.gob.pe/dataset/fallecidos-hospitalizados-y-vacunados-por-covid-19)
-[Datos](https://cloud.minsa.gob.pe/s/8EsmTzyiqmaySxk/download)
-
-
-----------------
-
-### Vacunación
-
-Posible de ligar con los otros archivos a través de ID_PERSONA
-
-He encontrado 2 versiones
-
-Demasiadas filas, dificil de cargar en memoria de la compu aunque tenga ~16GB de RAM. Lo ideal sería cargarlo a una BD y sacar los fragmentos que interesen
-También, si solo interesa saber cuantas dosis tiene una persona, se puede proyectar el ID_PERSONA antes de cargar los datos usando:
-
-```
-awk -F, '{print $2}' vacunas_covid.csv > vacunas_proyeccion.csv
-awk -F, '{print $1}' 2022_01_24_TB_VACUNACION_COVID19/TB_VACUNACION_COVID19.csv > vacunas_proyeccion.csv
-```
-
-54M regisros
-
-
-[Home](https://www.datosabiertos.gob.pe/dataset/vacunaci%C3%B3n-contra-covid-19-ministerio-de-salud-minsa)
-[Datos](https://cloud.minsa.gob.pe/s/To2QtqoNjKqobfw/download)
-
-Nombre del archivo: vacunas_covid.7z
-
---------------
-
-[Home](https://www.datosabiertos.gob.pe/dataset/vacunacion)
-[Datos](https://cloud.minsa.gob.pe/s/oHF5JSLEk8KzpPW/download)
-
-Nombre del archivo: TB_VACUNACION
-
-Parece mas ligero que el otro, puras fechas e ints, ni siquiera tiene el nombre de la vacuna en strings
-
-head -n 2
-```
-id_persona,id_vacunados_covid19,fecha_vacunacion,id_eess,id_centro_vacunacion,id_vacuna,id_grupo_riesgo,dosis,edad
-28192674,20698369,17/09/2021,2495,102495,6,23,1,37
-```
-
-----------------
-
-### Pruebas Positivas
-
-Tiene ID_PERSONA
-
-[Home](https://www.datosabiertos.gob.pe/dataset/casos-positivos-por-covid-19-ministerio-de-salud-minsa)
-[Datos](https://cloud.minsa.gob.pe/s/AC2adyLkHCKjmfm/download)
-
------------------
-
-### Pruebas PCR - INS
-
-Puede servir para complementar el analisis de "pandemia de los vacunados", parece que contiene datos de *todas* las pruebas, no solo positivas.
-
-[Home](https://www.datosabiertos.gob.pe/dataset/dataset-de-pruebas-moleculares-del-instituto-nacional-de-salud-para-covid-19-ins)
+We invite you to collaborate with us and analyze the data to (re)construct the graphs that tell us the truth about what is happening in Peru. 
