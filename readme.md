@@ -1,4 +1,4 @@
-# COVID-22 Perú
+# COVID-19 Perú 2022
 
 Esta es una 'forked branch' de [@grossir](https://github.com/grossir/covid-peru) que usé como punto de comienzo para actualizar el código y también creé un script bash que descarga todos los archivos de datos de diferentes fuentes desde los [Datos Abiertos Gobierno de Perú](https://datosabiertos.gob.pe/). El script get-data-minsa.bash es fácil de usar y produce un set de datos con las fechas en los nombres de los archivos. También tiene una opción para comprimir todos los archivos para almacenarlos y analizarlos en el futuro cuando le interese analizar un set de datos específico publicado en una fecha concreta.
 
