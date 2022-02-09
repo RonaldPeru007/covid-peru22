@@ -1,5 +1,5 @@
 ---
-title: "R Notebook"
+title: "Pandemia de vacunados"
 output: html_notebook
 ---
 
@@ -11,6 +11,7 @@ library(ggplot2)
 library(stringr)
 library(kableExtra)
 library(forcats)
+library(rlang)
 ```
 ```{css}
     caption {
@@ -22,8 +23,8 @@ library(forcats)
 
 
 ```{r}
-# https://www.datosabiertos.gob.pe/dataset/casos-positivos-por-covid-19-ministerio-de-salud-minsa
-positivos <- read_delim("2022_01_24_positivos_covid.csv", delim = ";") %>%     
+
+positivos <- read_delim("2022_02_08_positivos_covid.csv", delim = ";") %>%     
     mutate_at(
         vars(contains("FECHA")),
         function(x) { as.Date(as.character(x), "%Y%m%d") } 
@@ -44,7 +45,7 @@ positivos %>%
     geom_line(aes(x=FECHA_RESULTADO, y = n)) + 
     labs(
         title= "Pruebas positivas de Covid",
-        subtitle ="Fuente: Datos abiertos MINSA, al 24/01/2022",
+        subtitle ="Fuente: Datos abiertos MINSA, al 06/02/2022",
         x = "Fecha de resultado de prueba",
         y = "Numero de pruebas positivas"
     ) + 
@@ -61,30 +62,34 @@ positivos %>%
 
 
 ```{r}
-if (!file.exists("resumen_vacunacion.csv")){
+if (!file.exists(paste0(Sys.Date(), "_", "resumen_vacunacion.csv")))
+{
     # De https://www.datosabiertos.gob.pe/dataset/vacunacion
-    # Ver en el readme.md del proyecto como lo proceso para obtener vacunas_proyeccion.csv
-    vacunacion <- read_csv("vacunas_proyeccion.csv")
+    # Ver en el get-data-minsa.bash como lo proceso para obtener vacunas_proyeccion.csv
+  
+    vacunacion <- read_csv("2022_02_08_vacunas_proyeccion.csv")
     n_vacs <- count(vacunacion, id_persona)
-    write_csv(n_vacs, "resumen_vacunacion.csv") # reduce a 29.7M filas    
+    write_csv(n_vacs, paste0(Sys.Date(), "_", "resumen_vacunacion.csv")) # reduce rows    
 } else{
-    n_vacs <- read_csv("resumen_vacunacion.csv")
+    n_vacs <- read_csv(paste0(Sys.Date(), "_", "resumen_vacunacion.csv")) 
 }
 ```
 
 
-Corte al 15/12/2021
+Corte al 15/12/2021 - Filter from 15/12/2021 to 06/02/2022
+15/12/21 is when the so called 3rd wave started......and also the beginning of the 'obligation' of a vaccinepass/ID/QR
 ¿Por qué elegir esta fecha de corte?
 
 - Para ver unos dias antes del inicio de la 3era ola
 - Por el inicio del "carnet de vacunacion"
+
 ```{r}
 positivos %>% 
     filter(FECHA_RESULTADO >= as.Date("15/12/2021", "%d/%m/%Y")) %>% 
     nrow()
 ```
 
-#### Cruzando positivos con vacuandos
+#### Cruzando positivos con vacunados
 
 Se puede comprobar el cruce haciendo una busqueda del ID PERSONA en la data original y comparando la edad. 
 Tal vez valdria la pena hacer la proyeccion con edad para comprobar que los datos esten bien cruzados. Haciendo una muestrita a dedo, parece bien
@@ -101,31 +106,35 @@ con_vac <-
 ```
 
 
-Notar que en los datos de positividad hay ID_PERSONA vacios, por lo que no puedo decir si estan vac, no vac o que
+Notar que en los datos de positividad hay ID_PERSONA vacios, por lo que no puedo decir si estan vac, no vac o que ?
+In the positivos : con_vac are empty id_persona's so we don't know if they are vaxxed or not or something else ? 
 
 ```{r}
-nrow(con_vac)
+all_vaxxed <- nrow(con_vac)
+all_vaxxed # Show the amount of all tested persons since 15/12/2021 :
 ```
+Now let's correct and remove empty id_persona :
 
 ```{r}
 con_vac <- filter(con_vac, !is.na(id_persona))
 nrow(con_vac)
 ```
-
+So there are a # of records of tested people, with no id_persona:
 ```{r}
-710440-695162
+all_vaxxed_no_id <- all_vaxxed - nrow(con_vac)
+all_vaxxed_no_id
 ```
-15 278 positivos que no se puede saber su estado de vacunacion
-
-
+estos # positivos que no se puede saber su estado de vacunacion
+These # positives we have no idea about vaxxed status
 
 Porcentaje general de positividad segun dosis
+
 ```{r}
 con_vac %>%
-    count(n, sort=T) %>% 
+    count(n, sort=F, name = 'nn') %>% 
     mutate(
         p = round(nn/nrow(con_vac)*100, 3),
-        n = if_else(is.na(n), 0, n)
+        n = if_else(is.na(n), "0", as.character(n))
     ) %>% 
     rename(
         `Número de dosis` = n,
@@ -133,7 +142,7 @@ con_vac %>%
         `Porcentaje del total de positivos` = p,
     ) %>% 
       kbl(
-          caption = "Distribución de pruebas positivas según estado de vacunación, desde 15/12/2021 hasta 24/01/2022"
+          caption = "Distribución de pruebas positivas según estado de vacunación, desde 15/12/2021 hasta 06/02/2022"
          ) %>%
     kable_material_dark()
 ```
@@ -151,22 +160,28 @@ con_vac %>%
         `Porcentaje del total` = p,
     ) %>% 
     kbl(
-        caption = "<b style='color:black !important; text-align:center !important;'>Distribución de pruebas positivas según número de positivos por cada persona, desde 15/12/2021 hasta 24/01/2022</b>", 
+        caption = "<b style='color:black !important; text-align:center !important;'>Distribución de pruebas positivas según número de positivos por cada persona, desde 15/12/2021 hasta 06/02/2022</b>", 
     ) %>%
     kable_paper(full_width=F)
 ```
 
-Notar que, en este periodo de mes y 10 dias, hay:
+Notar que, en este periodo de 15/12 - 06/02 hay:
 
-- 23 personas que dan 4 veces positivo
-- 614 que dan 3 veces positivos
-- 23621 que dan 2 veces positivo (razonable, habria que ver)
+- 26 personas que dan 4 veces positivo
+- 680 que dan 3 veces positivos
+- 35403 que dan 2 veces positivo (razonable ?, habria que ver)
 
 Las duplicaciones suenan razonables, pero 3 o 4 suena raro... Facil y se hicieron la prueba varias veces. 
-Igual, el 96.38% de los datos corresponde a personas que salieron positivo 1 sola vez
+Igual, el 96.5% de los datos corresponde a personas que salieron positivo 1 sola vez
 
 
 Verlo por proporciones diarias afianza la idea
+
+````{r}
+gc()
+````
+
+Saves some GiB's, helps prevent crashing R
 
 ```{r}
 con_vac %>% 
@@ -180,17 +195,17 @@ con_vac %>%
     ggplot() + 
     geom_col(aes(x=FECHA_RESULTADO, y = p, fill=n_dosis)) + 
     labs(
-        title = "Porcentajes de pruebas positivas Covid según estado de vacunación",
-        subtitle = "Desde 15/12/2021 hasta 24/01/2022 | Fuente: datos abiertos Minsa | @gjrossir",
+        title = "Pruebas Positivas COVID x # vac.",
+        subtitle = "Desde 15/12/2021 hasta 06/02/2022 | Fuente: Datos Abiertos Minsa | @gjrossir",
         y = "Porcentaje (%) de pruebas positivas",
-        x = "Fecha de resultado de prueba",
+        x = "Fecha de resultado de prueba por dia",
         fill = "# de dosis"
     ) +
-    scale_x_date(date_breaks = "1 day", date_labels =  "%d/%m/%y")  + 
-    scale_fill_manual(values = rev(c("#c71e1d", "#ffe59c", "#09bb9f","#18a1cd"))) +
+    scale_x_date(date_breaks = "1 week", date_labels =  "%d/%m/%y")  + 
+    scale_fill_manual(values = rev(c("#000000", "#c71e1d", "#c71e1d","#ffe59c", "#4D9748", "#0000FF"))) +
     theme_minimal() + 
     theme(
-        plot.title = element_text(size=30),
+        plot.title = element_text(size=25),
         axis.title = element_text(size=20),
         # axis.ticks = element_text(size=14),
         axis.text.x=element_text(angle=90),
@@ -209,7 +224,7 @@ count(con_vac, METODO,sort=T) %>%
         `Número de pruebas` = n
     ) %>% 
     kbl(
-        caption = "<b style='color:black !important; text-align:center !important;'>Distribución de pruebas positivas según tipo de prueba,<br>desde 15/12/2021 hasta 24/01/2022</b>", 
+        caption = "<b style='color:black !important; text-align:center !important;'>Distribución de pruebas positivas según tipo de prueba,<br>desde 15/12/2021 hasta 06/02/2022</b>", 
     ) %>%
     kable_paper(full_width=F)
     # kable_material_dark(full_width = F, )
