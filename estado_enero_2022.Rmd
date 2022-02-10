@@ -1,0 +1,193 @@
+---
+title: "Estado Enero 2022"
+output: html_notebook
+---
+
+
+```{r}
+library(readr)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(stringr)
+```
+
+### Solo mes de enero 2022
+
+```{r}
+INICIO_ENERO_2022 <- as.Date("01/01/2022", format="%d/%m/%Y")
+
+sinadef <- read_csv("2022_02_09_TB_SINADEF.csv", col_types = cols(.default = col_character())) %>% 
+    mutate(FECHA=as.Date(FECHA, "%m/%d/%Y"))
+
+
+sinadef_solo_covid <- read_delim("2022_02_09_fallecidos_covid.csv", delim = ";") %>% 
+        mutate(
+            FECHA_FALLECIMIENTO = as.Date(as.character(FECHA_FALLECIMIENTO), "%Y%m%d"),
+            ano = year(FECHA_FALLECIMIENTO),
+            mes = month(FECHA_FALLECIMIENTO)
+        )
+cdc <- 
+    read_csv("2022_02_09_TB_FALLECIDO_HOSP_VAC.csv") %>% 
+    mutate_at(vars(contains("fecha")), function(x){ as.Date(x, format="%d/%m/%Y") }) %>% 
+    mutate(semana_muerte = paste0(year(fecha_fallecimiento), "|", str_pad(week(fecha_fallecimiento), 2, pad="0")))
+
+
+
+```
+Pense cruzar por vacuna, pero la data CDC ya incluye los muertos con criterio SINADEF
+
+```{r}
+# look in the get-data-minsa.bash to get the xxxx_xx_xx_vacunas_proyeccion.csv
+# Have some coffee while executing this chunk...
+
+ids_vacunados <- read_csv("2022_02_09_vacunas_proyeccion.csv")
+uno_o_mas_dosis <- count(ids_vacunados, id_persona) %>% filter(n>=1)
+# dos_o_mas_dosis <- count(ids_vacunados, id_persona) %>% filter(n>=2)
+```
+
+```{r}
+filter(sinadef, MES == "01", AÑO == "2022") %>% # sinadef has empty fechas so we use month & year to select
+    mutate(ID_PERSONA=as.numeric(ID_PERSONA)) %>% 
+  
+    # Anti join nos da los muertos no vacunados e ese periodo
+    # anti_join gives us the non vaccinated deaths in this period
+  
+    anti_join(uno_o_mas_dosis, by = c("ID_PERSONA"="id_persona")) %>% 
+    nrow()
+```
+
+4671 / 10109 = 46% # when MES & AÑO is used for selection
+
+3439 / 10109 = 34 % # when FECHA from sinadef is used 
+
+this is ratio all causes of death non vaxxed vs vaxxed
+
+Results with dataset on 31/12/2021 : 82.6%
+40882 / 49447 = 82.6%
+Este es el ratio de muertos por TODA CAUSA no vacunados / muertos por TODA CAUSA el periodo...
+
+Ojo: diferenciar del SINADEF completo vs el SINADEF parcial-COVID
+
+
+```{r}
+
+muertos_toda_causa <- nrow(
+    filter(sinadef, FECHA >= INICIO_ENERO_2022, year(FECHA) == 2022)
+)
+
+muertos_covid_enero_2022 <- nrow(
+    filter(sinadef_solo_covid, month(FECHA_FALLECIMIENTO) == 01, year(FECHA_FALLECIMIENTO) == 2022)
+)
+
+muertos_covid_cdc_enero_2022 <- nrow(
+    filter(cdc, month(fecha_fallecimiento) == 01, year(fecha_fallecimiento) == 2022)
+)
+
+muertos_covid_cdc_enero_2022_tres_vacunados <- nrow(
+    filter(cdc, month(fecha_fallecimiento) == 01, year(fecha_fallecimiento) == 2022, flag_vacuna == 3)
+)
+muertos_covid_cdc_enero_2022_dos_vacunados <- nrow(
+    filter(cdc, month(fecha_fallecimiento) == 01, year(fecha_fallecimiento) == 2022, flag_vacuna == 2)
+)
+muertos_covid_cdc_enero_2022_una_vacunados <- nrow(
+    filter(cdc,month(fecha_fallecimiento) == 01, year(fecha_fallecimiento) == 2022, flag_vacuna == 1)
+)
+muertos_covid_cdc_enero_2022_no_vacunados <- nrow(
+    filter(cdc, month(fecha_fallecimiento) == 01, year(fecha_fallecimiento) == 2022, flag_vacuna == 0)
+)
+
+# All people who died in UCI with COVID 
+
+muertos_covid_cdc_enero_2022_uci <- nrow(
+   filter(cdc, month(fecha_fallecimiento) == 01, year(fecha_fallecimiento) == 2022, flag_uci == 1)
+)
+
+# All vaccinated people who died in UCI with COVID 
+
+muertos_covid_cdc_enero_2022_uci_vac <- nrow(
+   filter(cdc, month(fecha_fallecimiento) == 01, year(fecha_fallecimiento) == 2022, flag_uci == 1,
+          flag_vacuna != 0)
+)
+
+# Ratio of vaccinated people / all people who died of COVID in UCI in ENERO 2022 :
+
+ratio_covid_cdc_enero_2022_uci <- muertos_covid_cdc_enero_2022_uci_vac / muertos_covid_cdc_enero_2022_uci
+
+# hospitalizados
+
+muertos_covid_cdc_enero_2022_hosp <- nrow(
+   filter(cdc, month(fecha_fallecimiento) == 01, year(fecha_fallecimiento) == 2022, flag_hospitalizado == 1)
+)
+
+# hospitalizados vacunados
+
+muertos_covid_cdc_enero_2022_hosp_vac <- nrow(
+   filter(cdc, month(fecha_fallecimiento) == 01, year(fecha_fallecimiento) == 2022, flag_hospitalizado == 1,
+          flag_vacuna != 0)
+)
+# Ratio hospitalizados vacunados vs no vacunados
+
+ratio_covid_cdc_enero_2022_hosp <- muertos_covid_cdc_enero_2022_hosp_vac / muertos_covid_cdc_enero_2022_hosp
+
+estado_enero_2022 <- list(
+    "Muertos Enero 2022, total"= muertos_toda_causa,
+    "Muertos Enero 2022, covid" = muertos_covid_enero_2022,
+    "Muertos Enero 2022, en CDC" = muertos_covid_cdc_enero_2022,
+    'Muertos CDC, 3 vacunados'=muertos_covid_cdc_enero_2022_tres_vacunados,
+    'Muertos CDC, 2 vacunados'=muertos_covid_cdc_enero_2022_dos_vacunados,
+    'Muertos CDC, 1 vacunado'=muertos_covid_cdc_enero_2022_una_vacunados,
+    'Muertos CDC, no vacuna'=muertos_covid_cdc_enero_2022_no_vacunados,
+    'Muertos CDC, en UCI total'=muertos_covid_cdc_enero_2022_uci,
+    'Muertos CDC, en UCI vacunados'= muertos_covid_cdc_enero_2022_uci_vac,
+    'Ratio muertos vacunados/total en UCI' = ratio_covid_cdc_enero_2022_uci,
+    'Muertos CDC, Hospitalizados total' = muertos_covid_cdc_enero_2022_hosp,
+    'Muertos CDC, Hospitalizados vacunados' = muertos_covid_cdc_enero_2022_hosp_vac,
+    'Ratio muertos vacunados/total hospitalizados' = ratio_covid_cdc_enero_2022_hosp
+)
+
+estado_enero_2022
+
+estado_enero_2022_csv <- as.data.frame(estado_enero_2022)
+
+write_csv(estado_enero_2022_csv, "estado_enero_2022.csv")
+```
+
+
+```{r}
+(muertos_toda_causa - muertos_covid_cdc_enero_2022_no_vacunados)/ muertos_toda_causa
+```
+
+```{r}
+muertos_covid_cdc_enero_2022_no_vacunados/ muertos_toda_causa
+```
+This is the ratio of nonvaxxed people who died of covid vs all causes of death. Don't know if it has any significance
+
+
+to calculate the amount of 0 vacunados / vacunados who died of COVID in January 2022 - CDC :
+
+
+```{r}
+muertos_covid_cdc_enero_2022_no_vacunados/ muertos_covid_cdc_enero_2022
+```
+Let's confirm that :
+
+```{r}
+cdc %>% 
+    filter(
+        fecha_fallecimiento >= INICIO_ENERO_2022,
+        month(fecha_fallecimiento) == 01,
+        year(fecha_fallecimiento) == 2022
+    ) %>% 
+    count(flag_vacuna) %>% 
+    mutate(n / muertos_covid_cdc_enero_2022)
+```
+
+47 % de los muertos por Covid tenian las 2 vacunas
+17 % de los muertos por Covid tenian las 3 vacunas
+
+29 % eran no vacunados
+
+para el mes de Enero 2022
+
+
